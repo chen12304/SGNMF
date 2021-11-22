@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import pairwise
 from advanced_agolorithm import cfsfdp
-
+from PIL import Image
 from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 
@@ -25,6 +25,7 @@ def compute_squared_EDM(X):
 a = np.array([[2, 0, 0], [0, 1, 0], [0, 0, 1]])
 
 dataset = [fuc.data_yale, fuc.data_USPS, fuc.data_umist, fuc.data_libras, fuc.data_JAFFE]
+print(dataset[2].shape)
 lab = [fuc.lab_yale, fuc.lab_USPS, fuc.lab_umist, fuc.lab_libras, fuc.lab_JAFFE]
 classfiers1 = [fuc.KMeans(n_clusters=15, init="random"), fuc.KMeans(n_clusters=10, init="random"),
                fuc.KMeans(n_clusters=20, init="random"),
@@ -37,6 +38,195 @@ r = [15, 10, 20, 15, 10]
 # 调用cfsfdp算法
 '''lab_cfsfdp = cfsfdp(dataset[3].T, r=0.65, classnum=r[3])
 print(acc(lab[3], lab_cfsfdp), nmi(lab[3], lab_cfsfdp))'''
+parameter = [[0.1, 2 * 30, 6, 0.01], [0.3, 2 * 0.0001, 3, 0.01], [30, 2 * 0.0003, 4, 0.001], [50, 2 * 2, 4, 2],
+             [30, 2 * 0.1, 6, 10]]
+
+title = ["yale", "USPS", "umist", "libras", "JAFFE"]
+sigma = [29 / 5, 88 / 5, 111 / 5, 21 / 5, 14 / 5]
+
+beta = [1e-3, 4e-3, 7e-3, 1e-2, 4e-3, 7e-2, 1e-1, 4e-1, 7e-1, 1, 4, 7, 10,40, 70, 100]#
+cgma = [1e-4, 4e-4, 7e-4, 1e-3, 4e-3, 7e-3, 1e-2, 4e-3, 7e-2, 1e-1, 4e-1, 7e-1, 1, 4, 7, 10]
+
+print(parameter[0][0],parameter[0][1])
+
+
+for i in [ 2,4]:
+    acc_all = np.array([])
+    nmi_all = np.array([])
+    for beta_1 in beta:
+        acc_arr = np.array([])
+        nmi_arr = np.array([])
+        for j in range(10):
+            U, V, err = SGNMF_inv_Gaussian(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                      sigma=sigma[i],
+                                      beta=beta_1,
+                                      cgma=parameter[i][3], linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err = SGNMF_inv_Laplacian(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                       sigma=sigma[i],
+                                       beta=beta_1,
+                                       cgma=parameter[i][3], linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err = SGNMF_comp_inv(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                  sigma=sigma[i],
+                                  beta=beta_1,
+                                  cgma=parameter[i][3], linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err = SGNMF_Symmetric_CT(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                      sigma=sigma[i],
+                                      beta=beta_1,
+                                      cgma=parameter[i][3], linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err= SGNMF_hyper_tan(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                   sigma=sigma[i],
+                                   beta=beta_1,
+                                   cgma=parameter[i][3], linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            print(a, b)
+        print(acc_arr.shape)
+        acc_mean = np.sum(acc_arr.reshape(10, 5), axis=0) / 10
+        print(acc_mean.shape)
+
+        nmi_mean = np.sum(nmi_arr.reshape(10, 5), axis=0) / 10
+        print(acc_mean, nmi_mean)
+        acc_all = np.append(acc_all, acc_mean)
+        nmi_all = np.append(nmi_all, nmi_mean)
+        print(acc_all.shape)
+    np.save("parameter-setting\\accbeta" + title[i] + ".npy", acc_all.reshape(16, 5))
+    np.save("parameter-setting\\nmibeta" + title[i] + ".npy", nmi_all.reshape(16, 5))
+
+
+for i in [2,4]:
+    acc_all = np.array([])
+    nmi_all = np.array([])
+    for cgma_1 in cgma:
+        acc_arr = np.array([])
+        nmi_arr = np.array([])
+        for j in range(10):
+            U, V, err = SGNMF_inv_Gaussian(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                      sigma=sigma[i],
+                                      beta=parameter[i][1],
+                                      cgma=cgma_1, linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err = SGNMF_inv_Laplacian(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                       sigma=sigma[i],
+                                       beta=parameter[i][1],
+                                       cgma=cgma_1, linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err = SGNMF_comp_inv(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                  sigma=sigma[i],
+                                  beta=parameter[i][1],
+                                  cgma=cgma_1, linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err = SGNMF_Symmetric_CT(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                      sigma=sigma[i],
+                                      beta=parameter[i][1],
+                                      cgma=cgma_1, linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            U, V, err= SGNMF_hyper_tan(dataset[i], r=r[i], k=100, lamb=parameter[i][0], p=parameter[i][2],
+                                   sigma=sigma[i],
+                                   beta=parameter[i][1],
+                                   cgma=cgma_1, linmatrix=None, init="nndsvdar")
+            lab_pre = classfiers2[i].fit_predict(V)
+            a = acc(lab[i], lab_pre)
+            b = nmi(lab[i], lab_pre)
+            acc_arr = np.append(acc_arr, a)
+            nmi_arr = np.append(nmi_arr, b)
+            print(a, b)
+        print(acc_arr.shape)
+        acc_mean = np.sum(acc_arr.reshape(10, 5), axis=0) / 10
+        print(acc_mean.shape)
+        nmi_mean = np.sum(nmi_arr.reshape(10, 5), axis=0) / 10
+        acc_all = np.append(acc_all, acc_mean)
+        nmi_all = np.append(nmi_all, nmi_mean)
+        print(acc_all.shape)
+    print(acc_all.shape)
+    np.save("parameter-setting\\acccgma" + title[i] + ".npy", acc_all.reshape(16, 5))
+    np.save("parameter-setting\\nmicgma" + title[i] + ".npy", nmi_all.reshape(16, 5))
+
+
+
+
+
+
+for i in [0]:
+    U, V, err_arr_5 = SGNMF_hyper_tan(dataset[i], r=r[i], k=100, lamb=5, p=6, sigma=sigma[i],
+                                      beta=5,
+                                      cgma=0.01, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(45, 55) * 2)
+    im.convert("RGB").save("data" + title[i] + "hyT.png", quality=100)
+    print("oookkkk")
+    U, V, err_arr_1 = SGNMF_inv_Gaussian(dataset[i], r=r[i], k=100, lamb=5, p=4, sigma=sigma[i],
+                                         beta=5,
+                                         cgma=10, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(90, 60) * 255 / 2)
+    im.convert("RGB").save("data" + title[i] + "inG.png", quality=100, format="png")
+    U, V, err_arr_5 = SGNMF_hyper_tan(dataset[i], r=r[i], k=100, lamb=0, p=4, sigma=sigma[i],
+                                      beta=0,
+                                      cgma=0.01, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(90, 60) * 255 / 2)
+    print("ok")
+    im.convert("RGB").save("data" + title[i] + "NMF.png", quality=100)
+    U, V, err_arr_5 = SGNMF_hyper_tan(dataset[i], r=r[i], k=100, lamb=5, p=4, sigma=sigma[i],
+                                      beta=0,
+                                      cgma=0.01, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(90, 60) * 255 / 2)
+    im.convert("RGB").save("data" + title[i] + "GNMF.png", quality=100)
+    U, V, err_arr_2 = SGNMF_inv_Laplacian(dataset[i], r=r[i], k=100, lamb=5, p=4, sigma=sigma[i],
+                                          beta=5,
+                                          cgma=0.01, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(90, 60) * 255 / 2)
+    im.convert("RGB").save("data" + title[i] + "inL.png")
+    U, V, err_arr_3 = SGNMF_comp_inv(dataset[i], r=r[i], k=100, lamb=5, p=4, sigma=sigma[i],
+                                     beta=5,
+                                     cgma=0.01, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(90, 60) * 255 / 2)
+    im.convert("RGB").save("data" + title[i] + "coI.png", quality=100)
+    U, V, err_arr_4 = SGNMF_Symmetric_CT(dataset[i], r=r[i], k=100, lamb=5, p=4, sigma=sigma[i],
+                                         beta=5,
+                                         cgma=0.01, linmatrix=None, init="random")
+    im = Image.fromarray(V.reshape(90, 60) * 255 / 2)
+    im.convert("RGB").save("data" + title[i] + "syC.png", quality=100)
+
+    err_arr = [err_arr_1, err_arr_2, err_arr_3, err_arr_4, err_arr_5]
+    SGNMF.draw(err_arr, title[i])
+    print("ok")
 
 
 # 调用kmeans
@@ -70,12 +260,11 @@ nmi_std_inG = []
 p = []
 beta = []
 lamb = []
-sigma = [29 / 5, 88 / 5, 111 / 5, 21 / 5, 14 / 5]
 # 训练代码
 for cgma_1 in [0.01, 0.0001, 0.005, 0.009, 0.01, 0.05, 0.09, 0.1, 0.5, 0.9, 1, 5, 9, 10]:
     for i in [0]:
-        for beta_1 in [30,100, 0.005, 6e-5, 0.00008, 0.0001, 0.0003, 0.0007]:
-            for lamb_1 in [0.1,1]:
+        for beta_1 in [30, 100, 0.005, 6e-5, 0.00008, 0.0001, 0.0003, 0.0007]:
+            for lamb_1 in [0.1, 1]:
 
                 # adj_matrix = np.load("similarity_matrix\\dateset" + str(i) + "p=" + str(p_1) + ".npy")
 
@@ -85,9 +274,10 @@ for cgma_1 in [0.01, 0.0001, 0.005, 0.009, 0.01, 0.05, 0.09, 0.1, 0.5, 0.9, 1, 5
                         acc_arr = np.array([])
                         nmi_arr = np.array([])
                         for j in range(20):
-                            U, V = SGNMF_hyper_tan(dataset[i], r=r[i]*2, k=100, lamb=lamb_1, p=p_1, sigma=sigma[i]*2 - h,
-                                                      beta=beta_1,
-                                                      cgma=cgma_1, linmatrix=None, init="nndsvda")
+                            U, V = SGNMF_hyper_tan(dataset[i], r=r[i] * 2, k=100, lamb=lamb_1, p=p_1,
+                                                   sigma=sigma[i] * 2 - h,
+                                                   beta=beta_1,
+                                                   cgma=cgma_1, linmatrix=None, init="nndsvda")
                             lab_pre = classfiers2[i].fit_predict(V)
                             a = acc(lab[i], lab_pre)
                             b = nmi(lab[i], lab_pre)
